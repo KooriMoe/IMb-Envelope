@@ -120,12 +120,25 @@ h2 {
       <input type="submit" value="Track">
   </form>
 </div>
+<div class="flex-container">
+  <form onsubmit="submitIMbForm(event);">
+    <label for="serial">or by IMb#: </label><br>
+    <input type="text" id="IMbNum" required class="flex-item" maxlength="65" pattern="\d*" title="65 digits"/><br>
+    <input type="submit" value="Track">
+</form>
+</div>
+
   <script>
       function submitForm(event) {
           event.preventDefault();
           let receiptZip = document.getElementById("receiptZip").value;
           let serial = document.getElementById("serial").value;
           window.location.href = `{{ url_for('tracking') }}?receipt_zip=${encodeURIComponent(receiptZip)}&serial=${encodeURIComponent(serial)}`;
+      }
+      function submitIMbForm(event) {
+          event.preventDefault();
+          let IMbNum = document.getElementById("IMbNum").value;
+          window.location.href = `{{ url_for('trackingIMb') }}?IMbNum=${encodeURIComponent(IMbNum)}`;
       }
   </script>
   </div>

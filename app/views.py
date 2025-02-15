@@ -158,6 +158,10 @@ async def download(format_type: str, doc_type: str):
 async def tracking():
     return await render_template("tracking.html")
 
+@app.route('/trackingIMb', methods=['GET'])
+async def trackingIMb():
+    return await render_template("trackingIMb.html")
+
 
 @app.websocket('/track-ws')
 async def track_ws():
@@ -169,6 +173,30 @@ async def track_ws():
             serial = int(serial)
             barcode = f"{config.BARCODE_ID:02d}" + f"{config.SRV_TYPE:03d}" + \
                 str(config.MAILER_ID) + f"{serial:06d}" + str(receipt_zip)
+        except (ValueError, TypeError):
+            await websocket.send('Invalid input received on WebSocket.')
+            continue
+        tracking_data = await usps_api.get_piece_tracking(barcode)
+        try:
+            if tracking_data.get('data') and 'imb' in tracking_data['data']:
+                imb_data_key = f'imb:{tracking_data["data"]["imb"]}' # type: ignore
+                stored_scans_data = await redis_client.lrange(imb_data_key, 0, -1)
+                if 'scans' not in tracking_data['data']:
+                    tracking_data['data']['scans'] = [] # type: ignore
+                for stored_scan in stored_scans_data:
+                    tracking_data['data']['scans'] = [json.loads( # type: ignore
+                        stored_scan)] + tracking_data['data']['scans'] # type: ignore
+        except (KeyError, ValueError):
+            pass
+        await websocket.send_json(tracking_data)
+
+@app.websocket('/trackIMb-ws')
+async def trackIMb_ws():
+    while True:
+        try:
+            req = await websocket.receive_json()
+            IMbNum = req['IMbNum']
+            barcode = IMbNum
         except (ValueError, TypeError):
             await websocket.send('Invalid input received on WebSocket.')
             continue
