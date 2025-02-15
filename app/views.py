@@ -86,7 +86,7 @@ async def generate():
         recipient_company,
         recipient_street,
         recipient_address2,
-        f"{recipient_city}, {recipient_state}, {zip_full}"
+        f"{recipient_city}, {recipient_state} {zip_full}"
     ]
     recipient_address = '\n'.join(filter(bool, recipient_address_parts))
     serial = await generate_serial()
