@@ -1,150 +1,159 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-  <title>Envelope Generator by Tianyi</title>
-<style>
-.container {
-  border: 2px solid #000;
-  border-radius: 5px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
+  <title>IMb Envelope</title>
+  <style>
+    .container {
+      border: 2px solid #000;
+      border-radius: 5px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
 
-h2 {
-  text-align: center;
-}
+    h2 {
+      text-align: center;
+    }
 
-.flex-container {
-  display: flex;
-  flex-wrap: wrap;
-  max-width: 750px; /* Adjust this value to the desired width */
-}
+    .flex-container {
+      display: flex;
+      flex-wrap: wrap;
+      max-width: 750px;
+      /* Adjust this value to the desired width */
+    }
 
-.flex-item {
-  flex: 1;
-  margin: 5px;
-}
-</style>
-<script>
-  function validateAddress() {
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', "{{ url_for('validate_address') }}");
-    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-    form_dom = document.getElementById("addressform");
-    if (!form_dom.checkValidity()) {
+    .flex-item {
+      flex: 1;
+      margin: 5px;
+    }
+  </style>
+  <script>
+    function validateAddress() {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', "{{ url_for('validate_address') }}");
+      xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+      form_dom = document.getElementById("addressform");
+      if (!form_dom.checkValidity()) {
         form_dom.reportValidity();
         return;
-    }
-    var address = {
-      firmname: encodeURIComponent(document.querySelector("input[name='recipient_company']").value.trim()),
-      address1: encodeURIComponent(document.querySelector("input[name='recipient_address2']").value.trim()),
-      address2: encodeURIComponent(document.querySelector("input[name='recipient_street']").value.trim()),
-      city: encodeURIComponent(document.querySelector("input[name='recipient_city']").value.trim()),
-      state: encodeURIComponent(document.querySelector("input[name='recipient_state']").value.trim()),
-      zip: encodeURIComponent(document.querySelector("input[name='recipient_zip']").value.trim())
-    };
-    
-    var urlencoded_data = Object.entries(address).map(([key, value]) => `${key}=${value}`).join('&');
-    
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
-        var address = JSON.parse(xhr.responseText);
-        
-        if (address.error) {
-          // handle error - display message, etc.
-          alert('Error validating address: ' + address.error);
-        } else {
-          document.querySelector("input[name='recipient_company']").value = address.firmname;
-          document.querySelector("input[name='recipient_address2']").value = address.address1;
-          document.querySelector("input[name='recipient_street']").value = address.address2;
-          document.querySelector("input[name='recipient_city']").value = address.city;
-          document.querySelector("input[name='recipient_state']").value = address.state;
-          document.querySelector("input[name='recipient_zip']").value = address.zip5 + address.zip4 + address.dp;
-        }
       }
-    };
-    
-    xhr.send(urlencoded_data);
-  }
-</script>
+      var address = {
+        firmname: encodeURIComponent(document.querySelector("input[name='recipient_company']").value.trim()),
+        address1: encodeURIComponent(document.querySelector("input[name='recipient_address2']").value.trim()),
+        address2: encodeURIComponent(document.querySelector("input[name='recipient_street']").value.trim()),
+        city: encodeURIComponent(document.querySelector("input[name='recipient_city']").value.trim()),
+        state: encodeURIComponent(document.querySelector("input[name='recipient_state']").value.trim()),
+        zip: encodeURIComponent(document.querySelector("input[name='recipient_zip']").value.trim())
+      };
+
+      var urlencoded_data = Object.entries(address).map(([key, value]) => `${key}=${value}`).join('&');
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+          var address = JSON.parse(xhr.responseText);
+
+          if (address.error) {
+            // handle error - display message, etc.
+            alert('Error validating address: ' + address.error);
+          } else {
+            document.querySelector("input[name='recipient_company']").value = address.firmname;
+            document.querySelector("input[name='recipient_address2']").value = address.address1;
+            document.querySelector("input[name='recipient_street']").value = address.address2;
+            document.querySelector("input[name='recipient_city']").value = address.city;
+            document.querySelector("input[name='recipient_state']").value = address.state;
+            document.querySelector("input[name='recipient_zip']").value = address.zip5 + address.zip4 + address.dp;
+          }
+        }
+      };
+
+      xhr.send(urlencoded_data);
+    }
+  </script>
 </head>
+
 <body>
   <h1>Envelope Generator</h1>
   <h3>Track your stamped letters simply and for free
-    <a class="github-button" href="https://github.com/1997cui/envelope" data-size="large" data-show-count="true" aria-label="Star 1997cui/envelope on GitHub">Star</a>
-  </h3>  
+    <a class="github-button" href="https://github.com/1997cui/envelope" data-size="large" data-show-count="true"
+      aria-label="Star 1997cui/envelope on GitHub">Star</a>
+  </h3>
   <div class="container">
     <h2>Generate Envelope</h2>
     <form method="POST" action="{{ url_for('generate') }}" target="_blank" id="addressform">
-		<label for="sender_address">Sender Address:</label><br>
-		<textarea name="sender_address" rows="4" cols="50"></textarea><br>
+      <label for="sender_address">Sender Address:</label><br>
+      <textarea name="sender_address" rows="4" cols="50"></textarea><br>
 
-		<label>Recipient Address:</label><br>
-<br>
-    <label for="recipient_name">Name:</label><br>
-    <div class="flex-container">
-      <input type="text" name="recipient_name" maxlength="100" class="flex-item"><br>
-    </div>
+      <label>Recipient Address:</label><br>
+      <br>
+      <label for="recipient_name">Name:</label><br>
+      <div class="flex-container">
+        <input type="text" name="recipient_name" maxlength="100" class="flex-item"><br>
+      </div>
       <label for="recipient_company">Company Name (optional):</label><br>
-    <div class="flex-container">
-      <input type="text" name="recipient_company" maxlength="100" class="flex-item"><br>
-    </div>
-    <label for="recipient_street">Street Address:</label><br>
-    <div class="flex-container">
-      <input type="text" name="recipient_street" maxlength="100" class="flex-item"><br>
-    </div>
-    <label for="recipient_address2">Address Line 2 (optional):</label><br>
-    <div class="flex-container">
-      <input type="text" name="recipient_address2" maxlength="100" class="flex-item"><br>
-    </div>
-    <label>City, State, and Zip (5, 9 or 11 digits):</label><br>
-    <div class="flex-container">
+      <div class="flex-container">
+        <input type="text" name="recipient_company" maxlength="100" class="flex-item"><br>
+      </div>
+      <label for="recipient_street">Street Address:</label><br>
+      <div class="flex-container">
+        <input type="text" name="recipient_street" maxlength="100" class="flex-item"><br>
+      </div>
+      <label for="recipient_address2">Address Line 2 (optional):</label><br>
+      <div class="flex-container">
+        <input type="text" name="recipient_address2" maxlength="100" class="flex-item"><br>
+      </div>
+      <label>City, State, and Zip (5, 9 or 11 digits):</label><br>
+      <div class="flex-container">
         <input type="text" name="recipient_city" maxlength="100" style="width: 30%;" class="flex-item">
         <input type="text" name="recipient_state" maxlength="2" minlength="2" style="width: 10%;" class="flex-item">
-        <input type="text" name="recipient_zip" maxlength="11" pattern="\d*" title="Enter 5, 9, or 11 digits" style="width: 20%;" class="flex-item"><br/>
-    </div>
-    <button onclick="validateAddress();" type="button">Validate Address</button>
-    <br/><br/>
-		<input type="submit" value="Generate" name="generate">
-	</form>
+        <input type="text" name="recipient_zip" maxlength="11" pattern="\d*" title="Enter 5, 9, or 11 digits"
+          style="width: 20%;" class="flex-item"><br />
+      </div>
+      <button onclick="validateAddress();" type="button">Validate Address</button>
+      <br /><br />
+      <input type="submit" value="Generate" name="generate">
+    </form>
   </div>
 
   <div class="container">
     <h2>Track Mail</h2>
     <div class="flex-container">
-    <form onsubmit="submitForm(event);">
-      <label for="serial">Serial: </label><br>
-      <input type="text" id="serial" required class="flex-item" maxlength="6" pattern="\d*" title="Max 6 digits"/><br>
-      <label for="receiptZip"> Receipt Zip (Exactly same as the above zip field): </label><br>
-      <input type="text" id="receiptZip" required class="flex-item"  maxlength="11" pattern="\d*" title="Enter 5, 9, or 11 digits"> <br>
-      <input type="submit" value="Track">
-  </form>
-</div>
-<div class="flex-container">
-  <form onsubmit="submitIMbForm(event);">
-    <label for="serial">or by IMb#: </label><br>
-    <input type="text" id="IMbNum" required class="flex-item" maxlength="65" pattern="\d*" title="65 digits"/><br>
-    <input type="submit" value="Track">
-</form>
-</div>
+      <form onsubmit="submitForm(event);">
+        <label for="serial">Serial: </label><br>
+        <input type="text" id="serial" required class="flex-item" maxlength="6" pattern="\d*"
+          title="Max 6 digits" /><br>
+        <label for="receiptZip"> Receipt Zip (Exactly same as the above zip field): </label><br>
+        <input type="text" id="receiptZip" required class="flex-item" maxlength="11" pattern="\d*"
+          title="Enter 5, 9, or 11 digits"> <br>
+        <input type="submit" value="Track">
+      </form>
+    </div>
+    <div class="flex-container">
+      <form onsubmit="submitIMbForm(event);">
+        <label for="serial">or by IMb#: </label><br>
+        <input type="text" id="IMbNum" required class="flex-item" maxlength="65" pattern="\d*" title="65 digits" /><br>
+        <input type="submit" value="Track">
+      </form>
+    </div>
 
-  <script>
+    <script>
       function submitForm(event) {
-          event.preventDefault();
-          let receiptZip = document.getElementById("receiptZip").value;
-          let serial = document.getElementById("serial").value;
-          window.location.href = `{{ url_for('tracking') }}?receipt_zip=${encodeURIComponent(receiptZip)}&serial=${encodeURIComponent(serial)}`;
+        event.preventDefault();
+        let receiptZip = document.getElementById("receiptZip").value;
+        let serial = document.getElementById("serial").value;
+        window.location.href = `{{ url_for('tracking') }}?receipt_zip=${encodeURIComponent(receiptZip)}&serial=${encodeURIComponent(serial)}`;
       }
       function submitIMbForm(event) {
-          event.preventDefault();
-          let IMbNum = document.getElementById("IMbNum").value;
-          window.location.href = `{{ url_for('trackingIMb') }}?IMbNum=${encodeURIComponent(IMbNum)}`;
+        event.preventDefault();
+        let IMbNum = document.getElementById("IMbNum").value;
+        window.location.href = `{{ url_for('trackingIMb') }}?IMbNum=${encodeURIComponent(IMbNum)}`;
       }
-  </script>
+    </script>
   </div>
 
-  <p><strong>Usage:</strong> Use the "Generate Envelope" section to create a PDF or HTML envelope, optionally, use validate address button to correct the address, <b>remember zip code and serial for tracking</b>. <br/>
+  <p><strong>Usage:</strong> Use the "Generate Envelope" section to create a PDF or HTML envelope, optionally, use
+    validate address button to correct the address, <b>remember zip code and serial for tracking</b>. <br />
     After mailing the envelope, use the "Track Mail" section to track its status.</p>
-    <script async defer src="https://buttons.github.io/buttons.js"></script>
+  <script async defer src="https://buttons.github.io/buttons.js"></script>
 </body>
+
 </html>
