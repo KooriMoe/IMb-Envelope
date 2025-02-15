@@ -34,15 +34,15 @@ body {
     width: 4in;
     height: 1.5in;
     position: absolute;
-    font-family: "DejaVu Serif",serif;
+    font-family: "Buckeye Serif 2",serif;
 }
 
 .recipient-address {
     width: 4in;
     height: 2.5in;
     position: absolute;
-    left: 5in;
-    bottom: 0.625in;
+    left: 4.5in;
+    bottom: 0.55in;
     display: flex;
     display: -webkit-box;
     flex-direction: column;
@@ -62,7 +62,7 @@ body {
 }
 
 .recipient-text {
-    font-family: "DejaVu Serif",serif;
+    font-family: "Buckeye Serif 2",serif;
 }
 
 </style>
@@ -72,7 +72,7 @@ body {
 			<!-- Sender address block -->
 			{% for line in sender_address.split('\n') %}
             {{ line }}<br/>
-            {% endfor %}
+            {% endfor %}<br/>
             <b>RETURN SERVICE REQUESTED</b><br/>
 		</div>
 		<div class="recipient-address">
