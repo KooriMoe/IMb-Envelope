@@ -20,6 +20,8 @@ class ConfigurableWorker(UvicornWorker):
 
     #: dict: Set the equivalent of uvicorn command line options as keys.
     CONFIG_KWARGS = {
-        "root_path": "/envelope",
+        "root_path": "",
+        # If you use a reverse proxy, you may need to set this to the path that the proxy forwards to.
+        # "root_path": "/envelope",
         "proxy_headers": True,
     }
