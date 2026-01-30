@@ -18,6 +18,7 @@ rfc3986==2.0.0
 toml==0.10.2
 tomli==2.0.1
 uvicorn-worker==0.3.0
+uvicorn<0.36
 watchfiles==0.20.0
 websockets==15.0.1
 wrapt==1.15.0

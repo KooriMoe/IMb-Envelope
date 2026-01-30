@@ -29,7 +29,7 @@ async def server_init():
 @app.after_serving
 async def server_shutdown():
     await redis_client.close()
-    print(app.background_tasks)
+    await usps_api.close_httpx_client()
 
 
 async def generate_serial():
@@ -62,25 +62,25 @@ async def index():
 
 @app.route('/generate', methods=['POST'])
 async def generate():
-    sender_address = (await request.form)['sender_address']
-    recipient_name = (await request.form)['recipient_name']
-    recipient_company = (await request.form).get('recipient_company', '')
-    recipient_street = (await request.form)['recipient_street']
-    recipient_address2 = (await request.form).get('recipient_address2', '')
-    recipient_city = (await request.form)['recipient_city']
-    recipient_state = (await request.form)['recipient_state']
-    try:
-        recipient_zip = int((await request.form)['recipient_zip'])
-        recipient_zip = str((await request.form)['recipient_zip'])
-    except ValueError:
-        response = "Recipient zip is not number!"
-        return response
-    if len(str((await request.form)['recipient_zip'])) < 5:
-        response = "Invalid recipient zip"
-        return response
-    zip_full = zip5 = str((await request.form)['recipient_zip'])[:5]
-    if len(str((await request.form)['recipient_zip'])) > 5:
-        zip4 = str((await request.form)['recipient_zip'])[5:9]
+    form = await request.form
+    sender_address = form['sender_address']
+    recipient_name = form['recipient_name']
+    recipient_company = form.get('recipient_company', '')
+    recipient_street = form['recipient_street']
+    recipient_address2 = form.get('recipient_address2', '')
+    recipient_city = form['recipient_city']
+    recipient_state = form['recipient_state']
+    zip_raw = form['recipient_zip']
+    zip_digits = ''.join(ch for ch in zip_raw if ch.isdigit())
+    if not zip_digits:
+        return "Recipient zip is not number!"
+    if len(zip_digits) < 5:
+        return "Invalid recipient zip"
+    if len(zip_digits) not in (5, 9, 11):
+        return "Invalid recipient zip length"
+    zip_full = zip5 = zip_digits[:5]
+    if len(zip_digits) >= 9:
+        zip4 = zip_digits[5:9]
         zip_full = f"{zip5}-{zip4}"
     recipient_address_parts = [
         recipient_name,
@@ -94,16 +94,18 @@ async def generate():
     session['sender_address'] = sender_address
     session['recipient_address'] = recipient_address
     session['serial'] = serial
-    session['recipient_zip'] = str((await request.form)['recipient_zip'])
-    return await render_template('generate.html', serial=serial, recipient_zip=recipient_zip)
+    session['recipient_zip'] = zip_digits
+    return await render_template('generate.html', serial=serial, recipient_zip=zip_digits)
 
 
 @app.route('/download/<format_type>/<doc_type>')
 async def download(format_type: str, doc_type: str):
-    sender_address = session['sender_address']
-    recipient_address = session['recipient_address']
-    serial = session['serial']
-    recipient_zip = session['recipient_zip']
+    sender_address = session.get('sender_address')
+    recipient_address = session.get('recipient_address')
+    serial = session.get('serial')
+    recipient_zip = session.get('recipient_zip')
+    if not sender_address or not recipient_address or serial is None or not recipient_zip:
+        return "Missing session data. Generate a barcode first.", 400
     human_readable_bar = generate_human_readable(recipient_zip, serial)
     row = request.args.get('row', default=1, type=int)
     col = request.args.get('col', default=1, type=int)

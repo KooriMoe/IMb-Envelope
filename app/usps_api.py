@@ -37,7 +37,6 @@ async def generate_usps_new_api_token(customer_id: str, customer_secret: str):
     }
     try:
         full_url = urljoin(USPS_NEW_API_URL_BASE, "/oauth2/v3/token")
-        httpx_client = httpx.AsyncClient(timeout=15)
         response = await httpx_client.post(full_url, headers=headers_local, json=data)
         response.raise_for_status()
     except httpx.HTTPError as err:
@@ -115,7 +114,7 @@ async def iv_token_maintain():
     if next_refresh_time is not None:
         next_refresh_time = datetime.datetime.fromtimestamp(
             float(next_refresh_time.decode('utf-8')))
-    if next_refresh_time is None or now > next_refresh_time:
+    if next_refresh_time is None or now > next_refresh_time or refresh_token is None:
         resp = await generate_iv_token_usps(config.BSG_USERNAME, config.BSG_PASSWD)
         if "error" in resp:
             return
@@ -149,10 +148,16 @@ async def get_iv_authorization_header():
     now = datetime.datetime.now()
     if next_refresh_time is None or now > next_refresh_time:
         await iv_token_maintain()
-    access_token = (await redis_client.get("usps_access_token")).decode('utf-8')
-    token_type = (await redis_client.get("usps_token_type")).decode('utf-8')
+    access_token = await redis_client.get("usps_access_token")
+    token_type = await redis_client.get("usps_token_type")
+    if not access_token or not token_type:
+        await iv_token_maintain()
+        access_token = await redis_client.get("usps_access_token")
+        token_type = await redis_client.get("usps_token_type")
+    if not access_token or not token_type:
+        raise AuthorizationTokenError("Unable to obtain USPS IV API access token")
     headers_local = dict()
-    headers_local["Authorization"] = token_type + " " + access_token
+    headers_local["Authorization"] = token_type.decode('utf-8') + " " + access_token.decode('utf-8')
     return headers_local
 
 async def get_new_api_authorization_header():
@@ -242,6 +247,9 @@ async def get_USPS_standardized_address(address):
     }
 
     return standardized_address
+
+async def close_httpx_client():
+    await httpx_client.aclose()
 
 
 async def get_USPS_standardized_address_new(address):
