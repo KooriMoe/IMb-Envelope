@@ -20,15 +20,16 @@ redis_client = aioredis.Redis(host=config.REDIS_HOST, port=6379, db=0)
 async def server_init():
     async def token_maintain():
         while True:
-            await usps_api.token_maintain()
-            await asyncio.sleep(60 * 5)
+            await usps_api.iv_token_maintain()
+            await usps_api.new_api_token_maintain()
+            await asyncio.sleep(5 * 60)
     app.add_background_task(token_maintain)
 
 
 @app.after_serving
 async def server_shutdown():
     await redis_client.close()
-    app.background_tasks.pop().cancel()
+    await usps_api.close_httpx_client()
 
 
 async def generate_serial():
@@ -50,7 +51,7 @@ def generate_human_readable(receipt_zip: str, serial: int):
 def query_usps_tracking(receipt_zip: str, serial: int):
     barcode = generate_human_readable(receipt_zip, serial)
     barcode = barcode.replace('-', '')
-    app.add_background_task(usps_api.token_maintain)
+    app.add_background_task(usps_api.iv_token_maintain)
     return usps_api.get_piece_tracking(barcode)
 
 
@@ -61,25 +62,25 @@ async def index():
 
 @app.route('/generate', methods=['POST'])
 async def generate():
-    sender_address = (await request.form)['sender_address']
-    recipient_name = (await request.form)['recipient_name']
-    recipient_company = (await request.form).get('recipient_company', '')
-    recipient_street = (await request.form)['recipient_street']
-    recipient_address2 = (await request.form).get('recipient_address2', '')
-    recipient_city = (await request.form)['recipient_city']
-    recipient_state = (await request.form)['recipient_state']
-    try:
-        recipient_zip = int((await request.form)['recipient_zip'])
-        recipient_zip = str((await request.form)['recipient_zip'])
-    except ValueError:
-        response = "Recipient zip is not number!"
-        return response
-    if len(str((await request.form)['recipient_zip'])) < 5:
-        response = "Invalid recipient zip"
-        return response
-    zip_full = zip5 = str((await request.form)['recipient_zip'])[:5]
-    if len(str((await request.form)['recipient_zip'])) > 5:
-        zip4 = str((await request.form)['recipient_zip'])[5:9]
+    form = await request.form
+    sender_address = form['sender_address']
+    recipient_name = form['recipient_name']
+    recipient_company = form.get('recipient_company', '')
+    recipient_street = form['recipient_street']
+    recipient_address2 = form.get('recipient_address2', '')
+    recipient_city = form['recipient_city']
+    recipient_state = form['recipient_state']
+    zip_raw = form['recipient_zip']
+    zip_digits = ''.join(ch for ch in zip_raw if ch.isdigit())
+    if not zip_digits:
+        return "Recipient zip is not number!"
+    if len(zip_digits) < 5:
+        return "Invalid recipient zip"
+    if len(zip_digits) not in (5, 9, 11):
+        return "Invalid recipient zip length"
+    zip_full = zip5 = zip_digits[:5]
+    if len(zip_digits) >= 9:
+        zip4 = zip_digits[5:9]
         zip_full = f"{zip5}-{zip4}"
     recipient_address_parts = [
         recipient_name,
@@ -93,16 +94,18 @@ async def generate():
     session['sender_address'] = sender_address
     session['recipient_address'] = recipient_address
     session['serial'] = serial
-    session['recipient_zip'] = str((await request.form)['recipient_zip'])
-    return await render_template('generate.html', serial=serial, recipient_zip=recipient_zip)
+    session['recipient_zip'] = zip_digits
+    return await render_template('generate.html', serial=serial, recipient_zip=zip_digits)
 
 
 @app.route('/download/<format_type>/<doc_type>')
 async def download(format_type: str, doc_type: str):
-    sender_address = session['sender_address']
-    recipient_address = session['recipient_address']
-    serial = session['serial']
-    recipient_zip = session['recipient_zip']
+    sender_address = session.get('sender_address')
+    recipient_address = session.get('recipient_address')
+    serial = session.get('serial')
+    recipient_zip = session.get('recipient_zip')
+    if not sender_address or not recipient_address or serial is None or not recipient_zip:
+        return "Missing session data. Generate a barcode first.", 400
     human_readable_bar = generate_human_readable(recipient_zip, serial)
     row = request.args.get('row', default=1, type=int)
     col = request.args.get('col', default=1, type=int)
@@ -180,7 +183,7 @@ async def track_ws():
         try:
             if tracking_data.get('data') and 'imb' in tracking_data['data']:
                 imb_data_key = f'imb:{tracking_data["data"]["imb"]}' # type: ignore
-                stored_scans_data = await redis_client.lrange(imb_data_key, 0, -1)
+                stored_scans_data = await redis_client.lrange(imb_data_key, 0, -1) # pyright: ignore [reportGeneralTypeIssues]
                 if 'scans' not in tracking_data['data']:
                     tracking_data['data']['scans'] = [] # type: ignore
                 for stored_scan in stored_scans_data:
@@ -217,23 +220,28 @@ async def trackIMb_ws():
 
 @app.route('/validate_address', methods=['POST'])
 async def validate_address():
-    zip_full = str((await request.form)['zip']).replace('-', '')
-    zip5 = zip_full[:5]
+    form = await request.form
+    zip_full = str(form.get('zip', '')).replace('-', '')
+    zip_digits = ''.join(ch for ch in zip_full if ch.isdigit())
+    zip5 = zip_digits[:5]
     address = {
-        'address1': (await request.form)['address1'],
-        'address2': (await request.form)['address2'],
-        'city': (await request.form)['city'],
-        'state': (await request.form)['state'],
+        'street_address': form.get('street_address', form.get('address2', '')),
+        'address2': form.get('address2', form.get('address1', '')),
+        'city': form.get('city', ''),
+        'state': form.get('state', ''),
         'zip5': zip5,
     }
-    if len(zip_full) >= 9:
-        address['zip4'] = zip_full[5:9]
-    if len(zip_full) >= 11:
-        address['dp'] = zip_full[9:11]
-    if len((await request.form)['firmname']) > 0:
-        address['firmname'] = (await request.form)['firmname']
-    standardized_address = await usps_api.get_USPS_standardized_address(address)
-
+    if len(zip_digits) >= 9:
+        address['zip4'] = zip_digits[5:9]
+    if len(zip_digits) >= 11:
+        address['dp'] = zip_digits[9:11]
+    if len(form.get('firmname', '')) > 0:
+        address['firmname'] = form.get('firmname', '')
+    standardized_address = await usps_api.get_USPS_standardized_address_new(address)
+    if standardized_address.get('zip4', None) is None:
+        standardized_address['zip4'] = ''
+    standardized_address['address1'] = standardized_address.get('address2', '')
+    standardized_address['address2'] = standardized_address.get('street_address', '')
     return jsonify(standardized_address)
 
 
@@ -266,7 +274,7 @@ async def usps_feed():
         }
 
         redis_key = f'imb:{barcode}'
-        await redis_client.rpush(redis_key, json.dumps(reformed_event))
+        await redis_client.rpush(redis_key, json.dumps(reformed_event)) # pyright: ignore [reportGeneralTypeIssues]
         ttl_seconds = 60 * 24 * 60 * 60
         await redis_client.expire(redis_key, ttl_seconds)
     return "Data stored in Redis."

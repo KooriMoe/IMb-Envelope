@@ -1,36 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Save your tracking information</title>
-</head>
-<body>
-    <h2>Tracking Information</h2>
-    <p>Serial: {{serial}}</p>
-    <p>Receipt ZIP: {{recipient_zip}}</p>
-    
-    <h3>Download envelope</h3>
-    <a href="{{ url_for('download', format_type='envelope', doc_type='html') }}">Download as HTML</a>
-    <br>
-    <a href="{{ url_for('download', format_type='envelope', doc_type='pdf') }}">Download as PDF</a>
 
-    <h3>Download Avery 8163 sticker</h3>
-    <form action="{{ url_for('download', format_type='avery', doc_type='html') }}" method="get">
-        <label for="row">Row (1-5):</label>
-        <input type="number" id="row" name="row" min="1" max="5">
-        <label for="col">Column (1-2):</label>
-        <input type="number" id="col" name="col" min="1" max="2">
-        <button type="submit">Download as HTML</button>
-    </form>
-    <br>
-    <form action="{{ url_for('download', format_type='avery', doc_type='pdf') }}" method="get">
-        <label for="row">Row (1-5):</label>
-        <input type="number" id="row" name="row" min="1" max="5">
-        <label for="col">Column (1-2):</label>
-        <input type="number" id="col" name="col" min="1" max="2">
-        <button type="submit">Download as PDF</button>
-    </form>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Save your tracking information</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mdui@1.0.2/dist/css/mdui.min.css" />
+  <style>
+    body {
+      background: linear-gradient(135deg, #f7f8fb 0%, #eef1f7 100%);
+    }
+
+    .main-content {
+      padding-top: 72px;
+      padding-bottom: 48px;
+      max-width: 900px;
+    }
+
+    .section-card {
+      border-radius: 16px;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+  </style>
+</head>
+
+<body class="mdui-theme-primary-indigo mdui-theme-accent-amber mdui-typo">
+  <div class="mdui-appbar mdui-appbar-fixed">
+    <div class="mdui-toolbar mdui-color-theme">
+      <a href="{{ url_for('index') }}" class="mdui-btn mdui-btn-icon" aria-label="Back">
+        <i class="mdui-icon material-icons">arrow_back</i>
+      </a>
+      <span class="mdui-typo-title">Tracking Information</span>
+    </div>
+  </div>
+
+  <div class="mdui-container main-content">
+    <div class="mdui-card section-card mdui-m-b-4">
+      <div class="mdui-card-primary">
+        <div class="mdui-card-primary-title">Save these details</div>
+        <div class="mdui-card-primary-subtitle">You will need them to track the mail later.</div>
+      </div>
+      <div class="mdui-card-content">
+        <div class="mdui-typo-subheading">Serial</div>
+        <div class="mdui-typo-title mdui-text-color-theme">{{serial}}</div>
+        <div class="mdui-divider mdui-m-y-2"></div>
+        <div class="mdui-typo-subheading">Receipt ZIP</div>
+        <div class="mdui-typo-title mdui-text-color-theme">{{recipient_zip}}</div>
+      </div>
+    </div>
+
+    <div class="mdui-card section-card mdui-m-b-4">
+      <div class="mdui-card-primary">
+        <div class="mdui-card-primary-title">Download envelope</div>
+        <div class="mdui-card-primary-subtitle">Choose HTML or PDF</div>
+      </div>
+      <div class="mdui-card-content">
+        <div class="button-row">
+          <a class="mdui-btn mdui-ripple mdui-color-theme" href="{{ url_for('download', format_type='envelope', doc_type='html') }}">
+            Download HTML
+          </a>
+          <a class="mdui-btn mdui-ripple mdui-btn-outlined" href="{{ url_for('download', format_type='envelope', doc_type='pdf') }}">
+            Download PDF
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="mdui-card section-card">
+      <div class="mdui-card-primary">
+        <div class="mdui-card-primary-title">Download Avery 8163 sticker</div>
+        <div class="mdui-card-primary-subtitle">Select row and column</div>
+      </div>
+      <div class="mdui-card-content grid-2">
+        <form action="{{ url_for('download', format_type='avery', doc_type='html') }}" method="get">
+          <div class="mdui-textfield">
+            <label class="mdui-textfield-label" for="row-html">Row (1-5)</label>
+            <input class="mdui-textfield-input" type="number" id="row-html" name="row" min="1" max="5" />
+          </div>
+          <div class="mdui-textfield">
+            <label class="mdui-textfield-label" for="col-html">Column (1-2)</label>
+            <input class="mdui-textfield-input" type="number" id="col-html" name="col" min="1" max="2" />
+          </div>
+          <button type="submit" class="mdui-btn mdui-ripple mdui-color-theme">Download HTML</button>
+        </form>
+
+        <form action="{{ url_for('download', format_type='avery', doc_type='pdf') }}" method="get">
+          <div class="mdui-textfield">
+            <label class="mdui-textfield-label" for="row-pdf">Row (1-5)</label>
+            <input class="mdui-textfield-input" type="number" id="row-pdf" name="row" min="1" max="5" />
+          </div>
+          <div class="mdui-textfield">
+            <label class="mdui-textfield-label" for="col-pdf">Column (1-2)</label>
+            <input class="mdui-textfield-input" type="number" id="col-pdf" name="col" min="1" max="2" />
+          </div>
+          <button type="submit" class="mdui-btn mdui-ripple mdui-btn-outlined">Download PDF</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/mdui@1.0.2/dist/js/mdui.min.js"></script>
 </body>
+
 </html>
