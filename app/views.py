@@ -220,24 +220,28 @@ async def trackIMb_ws():
 
 @app.route('/validate_address', methods=['POST'])
 async def validate_address():
-    zip_full = str((await request.form)['zip']).replace('-', '')
-    zip5 = zip_full[:5]
+    form = await request.form
+    zip_full = str(form.get('zip', '')).replace('-', '')
+    zip_digits = ''.join(ch for ch in zip_full if ch.isdigit())
+    zip5 = zip_digits[:5]
     address = {
-        'street_address': (await request.form)['street_address'],
-        'address2': (await request.form)['address2'],
-        'city': (await request.form)['city'],
-        'state': (await request.form)['state'],
+        'street_address': form.get('street_address', form.get('address2', '')),
+        'address2': form.get('address2', form.get('address1', '')),
+        'city': form.get('city', ''),
+        'state': form.get('state', ''),
         'zip5': zip5,
     }
-    if len(zip_full) >= 9:
-        address['zip4'] = zip_full[5:9]
-    if len(zip_full) >= 11:
-        address['dp'] = zip_full[9:11]
-    if len((await request.form)['firmname']) > 0:
-        address['firmname'] = (await request.form)['firmname']
+    if len(zip_digits) >= 9:
+        address['zip4'] = zip_digits[5:9]
+    if len(zip_digits) >= 11:
+        address['dp'] = zip_digits[9:11]
+    if len(form.get('firmname', '')) > 0:
+        address['firmname'] = form.get('firmname', '')
     standardized_address = await usps_api.get_USPS_standardized_address_new(address)
     if standardized_address.get('zip4', None) is None:
-        standardized_address['zip4']=''
+        standardized_address['zip4'] = ''
+    standardized_address['address1'] = standardized_address.get('address2', '')
+    standardized_address['address2'] = standardized_address.get('street_address', '')
     return jsonify(standardized_address)
 
 
