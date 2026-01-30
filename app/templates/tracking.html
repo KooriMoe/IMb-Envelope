@@ -2,124 +2,184 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tracking Information</title>
-    <script>
-        // Fetch receipt_zip and serial from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const receiptZip = urlParams.get("receipt_zip");
-        const serial = urlParams.get("serial");
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tracking Information</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mdui@1.0.2/dist/css/mdui.min.css" />
+  <style>
+    body {
+      background: linear-gradient(140deg, #f5f7ff 0%, #eef0f6 100%);
+    }
 
-        // WebSocket connection
-        let ws_protocol = location.protocol === "https:" ? "wss" : "ws";
-        let ws_path = "{{ url_for('track_ws') }}";
-        let ws_rel_path = ws_path.replace(/^(ws:\/\/|wss:\/\/)[^/]+/, "");
-        let ws = new WebSocket(`${ws_protocol}://${location.host}${ws_rel_path}`);
-        ws.onmessage = (event) => {
-            // Hide loading indicator
-            document.getElementById("loading").style.display = "none";
+    .main-content {
+      padding-top: 72px;
+      padding-bottom: 48px;
+    }
 
-            let result = JSON.parse(event.data);
-            if ("error" in result) {
-                displayError(result["error"], result["error_description"], result["details"]);
-            } else if ("message" in result && result["message"]) {
-                displayMessage(result["message"])
-            } else {
-                displayData(result["data"]);
-            }
-        };
+    .section-card {
+      border-radius: 16px;
+      overflow: hidden;
+    }
 
-        ws.onopen = () => {
-            ws.send(JSON.stringify({ receipt_zip: receiptZip, serial: serial }));
-        };
+    #loading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+  </style>
+  <script>
+    // Fetch receipt_zip and serial from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const receiptZip = urlParams.get("receipt_zip");
+    const serial = urlParams.get("serial");
 
-        // Escape HTML special characters to prevent XSS
-        function escapeHTML(str) {
-            if (typeof str !== "string") str = String(str);
-            return str.replace(/[&<>"'`=\/]/g, function (s) {
-                return ({
-                    "&": "&amp;",
-                    "<": "&lt;",
-                    ">": "&gt;",
-                    '"': "&quot;",
-                    "'": "&#39;",
-                    "`": "&#96;",
-                    "=": "&#61;",
-                    "/": "&#47;"
-                })[s];
-            });
-        }
+    // WebSocket connection
+    let ws_protocol = location.protocol === "https:" ? "wss" : "ws";
+    let ws_path = "{{ url_for('track_ws') }}";
+    let ws_rel_path = ws_path.replace(/^(ws:\/\/|wss:\/\/)[^/]+/, "");
+    let ws = new WebSocket(`${ws_protocol}://${location.host}${ws_rel_path}`);
+    ws.onmessage = (event) => {
+      // Hide loading indicator
+      document.getElementById("loading").style.display = "none";
 
-        function displayMessage(message) {
-            let resultContainer = document.getElementById("result_container");
-            let content = `<p>${escapeHTML(message)}</p>`;
-            resultContainer.innerHTML = content;
-        }
+      let result = JSON.parse(event.data);
+      if ("error" in result) {
+        displayError(result["error"], result["error_description"], result["details"]);
+      } else if ("message" in result && result["message"]) {
+        displayMessage(result["message"]);
+      } else {
+        displayData(result["data"]);
+      }
+    };
 
-        function displayError(error, error_description, details) {
-            let resultContainer = document.getElementById("result_container");
-            let content = `<p>Error: ${escapeHTML(error)}</p>
-                   <p>Description: ${escapeHTML(error_description)}</p>
-                   <p>Details: ${escapeHTML(details)}</p>`;
-            resultContainer.innerHTML = content;
-        }
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ receipt_zip: receiptZip, serial: serial }));
+    };
 
-        function displayData(data) {
-            let resultContainer = document.getElementById("result_container");
-            let content = `
-                <p>Expected Delivery Date: ${escapeHTML(data.expected_delivery_date)}</p>
-                <p>Mail Class: ${escapeHTML(data.mail_class)}</p>
-                <p>Mail Shape: ${escapeHTML(data.mail_shape)}</p>
-                <p>Start The Clock Date: ${escapeHTML(data.start_the_clock_date)}</p>
-                <p>Start The Clock Facility Name: ${escapeHTML(data.start_the_clock_facility_name)}</p>
-                <p>Start The Clock Facility City: ${escapeHTML(data.start_the_clock_facility_city)}</p>
-                <p>Start The Clock Facility State: ${escapeHTML(data.start_the_clock_facility_state)}</p>
-                <p>Start The Clock Facility ZIP: ${escapeHTML(data.start_the_clock_facility_zip)}</p>
-                <table border="1">
-                    <tr>
-                        <th>Date/Time</th>
-                        <th>Event</th>
-                        <th>Handling Event Type</th>
-                        <th>Mail Phase</th>
-                        <th>Machine Name</th>
-                        <th>Scanner Type</th>
-                        <th>Facility Name</th>
-                        <th>Locale Key</th>
-                        <th>City</th>
-                        <th>State</th>
-                        <th>ZIP</th>
-                    </tr>`;
+    // Escape HTML special characters to prevent XSS
+    function escapeHTML(str) {
+      if (typeof str !== "string") str = String(str);
+      return str.replace(/[&<>"'`=\/]/g, function (s) {
+        return ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+          "`": "&#96;",
+          "=": "&#61;",
+          "/": "&#47;"
+        })[s];
+      });
+    }
 
-            data.scans.forEach(scan => {
-                content += `
-                    <tr>
-                        <td>${escapeHTML(scan.scan_date_time)}</td>
-                        <td>${escapeHTML(scan.scan_event_code)}</td>
-                        <td>${escapeHTML(scan.handling_event_type || 'N/A')}</td>
-                        <td>${escapeHTML(scan.mail_phase || 'N/A')}</td>
-                        <td>${escapeHTML(scan.machine_name || 'N/A')}</td>
-                        <td>${escapeHTML(scan.scanner_type || 'N/A')}</td>
-                        <td>${escapeHTML(scan.scan_facility_name || 'N/A')}</td>
-                        <td>${escapeHTML(scan.scan_facility_locale_key || 'N/A')}</td>
-                        <td>${escapeHTML(scan.scan_facility_city || 'N/A')}</td>
-                        <td>${escapeHTML(scan.scan_facility_state || 'N/A')}</td>
-                        <td>${escapeHTML(scan.scan_facility_zip || 'N/A')}</td>
-                    </tr>`;
-            });
+    function displayMessage(message) {
+      let resultContainer = document.getElementById("result_container");
+      let content = `<p>${escapeHTML(message)}</p>`;
+      resultContainer.innerHTML = content;
+    }
 
-            content += `</table>`;
-            resultContainer.innerHTML = content;
-        }
-    </script>
+    function displayError(error, error_description, details) {
+      let resultContainer = document.getElementById("result_container");
+      let content = `<p><strong>Error:</strong> ${escapeHTML(error)}</p>
+        <p><strong>Description:</strong> ${escapeHTML(error_description)}</p>
+        <p><strong>Details:</strong> ${escapeHTML(details)}</p>`;
+      resultContainer.innerHTML = content;
+    }
+
+    function displayData(data) {
+      let resultContainer = document.getElementById("result_container");
+      let content = `
+        <div class="mdui-typo-subheading">Overview</div>
+        <div class="mdui-row">
+          <div class="mdui-col-xs-12 mdui-col-sm-6">
+            <p><strong>Expected Delivery Date:</strong> ${escapeHTML(data.expected_delivery_date)}</p>
+            <p><strong>Mail Class:</strong> ${escapeHTML(data.mail_class)}</p>
+            <p><strong>Mail Shape:</strong> ${escapeHTML(data.mail_shape)}</p>
+          </div>
+          <div class="mdui-col-xs-12 mdui-col-sm-6">
+            <p><strong>Start The Clock Date:</strong> ${escapeHTML(data.start_the_clock_date)}</p>
+            <p><strong>Facility:</strong> ${escapeHTML(data.start_the_clock_facility_name)}</p>
+            <p><strong>Location:</strong> ${escapeHTML(data.start_the_clock_facility_city)}, ${escapeHTML(data.start_the_clock_facility_state)} ${escapeHTML(data.start_the_clock_facility_zip)}</p>
+          </div>
+        </div>
+        <div class="mdui-divider mdui-m-y-2"></div>
+        <div class="mdui-typo-subheading">Scan history</div>
+        <div class="mdui-table-fluid">
+          <table class="mdui-table mdui-table-hoverable">
+            <thead>
+              <tr>
+                <th>Date/Time</th>
+                <th>Event</th>
+                <th>Handling Event Type</th>
+                <th>Mail Phase</th>
+                <th>Machine Name</th>
+                <th>Scanner Type</th>
+                <th>Facility Name</th>
+                <th>Locale Key</th>
+                <th>City</th>
+                <th>State</th>
+                <th>ZIP</th>
+              </tr>
+            </thead>
+            <tbody>`;
+
+      data.scans.forEach(scan => {
+        content += `
+          <tr>
+            <td>${escapeHTML(scan.scan_date_time)}</td>
+            <td>${escapeHTML(scan.scan_event_code)}</td>
+            <td>${escapeHTML(scan.handling_event_type || 'N/A')}</td>
+            <td>${escapeHTML(scan.mail_phase || 'N/A')}</td>
+            <td>${escapeHTML(scan.machine_name || 'N/A')}</td>
+            <td>${escapeHTML(scan.scanner_type || 'N/A')}</td>
+            <td>${escapeHTML(scan.scan_facility_name || 'N/A')}</td>
+            <td>${escapeHTML(scan.scan_facility_locale_key || 'N/A')}</td>
+            <td>${escapeHTML(scan.scan_facility_city || 'N/A')}</td>
+            <td>${escapeHTML(scan.scan_facility_state || 'N/A')}</td>
+            <td>${escapeHTML(scan.scan_facility_zip || 'N/A')}</td>
+          </tr>`;
+      });
+
+      content += `
+            </tbody>
+          </table>
+        </div>`;
+      resultContainer.innerHTML = content;
+    }
+  </script>
 </head>
 
-<body>
-    <h1>Tracking Information</h1>
-    <div id="loading">Loading...</div>
-    <div id="result_container">
-        <!-- Results will be displayed here -->
+<body class="mdui-theme-primary-indigo mdui-theme-accent-amber mdui-typo">
+  <div class="mdui-appbar mdui-appbar-fixed">
+    <div class="mdui-toolbar mdui-color-theme">
+      <a href="{{ url_for('index') }}" class="mdui-btn mdui-btn-icon" aria-label="Back">
+        <i class="mdui-icon material-icons">arrow_back</i>
+      </a>
+      <span class="mdui-typo-title">Tracking Information</span>
     </div>
+  </div>
+
+  <div class="mdui-container main-content">
+    <div class="mdui-card section-card">
+      <div class="mdui-card-primary">
+        <div class="mdui-card-primary-title">Live status</div>
+        <div class="mdui-card-primary-subtitle">Scanning results update automatically</div>
+      </div>
+      <div class="mdui-card-content">
+        <div id="loading">
+          <div class="mdui-spinner"></div>
+          <span>Loading tracking data...</span>
+        </div>
+        <div id="result_container">
+          <!-- Results will be displayed here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/mdui@1.0.2/dist/js/mdui.min.js"></script>
 </body>
 
 </html>
