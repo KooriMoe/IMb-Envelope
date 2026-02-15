@@ -1,5 +1,8 @@
 const http = require("http");
 const { spawn } = require("child_process");
+const os = require("os");
+const path = require("path");
+const fs = require("fs/promises");
 const express = require("express");
 const session = require("express-session");
 const nunjucks = require("nunjucks");
@@ -117,6 +120,10 @@ function renderTemplate(templateName, data) {
 
 function renderPdf(html, options) {
   return new Promise((resolve, reject) => {
+    const outputFile = path.join(
+      os.tmpdir(),
+      `imb-envelope-${Date.now()}-${process.pid}-${Math.random().toString(16).slice(2)}.pdf`
+    );
     const args = [];
     for (const [key, value] of Object.entries(options)) {
       const flag = `--${key}`;
@@ -125,13 +132,11 @@ function renderPdf(html, options) {
         args.push(String(value));
       }
     }
-    args.push("-", "-");
+    args.push("-", outputFile);
 
     const child = spawn(config.wkhtmltopdfPath, args, { stdio: ["pipe", "pipe", "pipe"] });
-    const stdout = [];
     const stderr = [];
 
-    child.stdout.on("data", (chunk) => stdout.push(chunk));
     child.stderr.on("data", (chunk) => stderr.push(chunk));
     child.on("error", (error) => {
       if (error.code === "ENOENT") {
@@ -140,17 +145,23 @@ function renderPdf(html, options) {
       }
       reject(error);
     });
-    child.on("close", (code) => {
-      const pdf = Buffer.concat(stdout);
-      if (code !== 0) {
-        reject(new Error(`wkhtmltopdf failed with exit code ${code}: ${Buffer.concat(stderr).toString("utf8")}`));
-        return;
+    child.on("close", async (code) => {
+      try {
+        if (code !== 0) {
+          reject(new Error(`wkhtmltopdf failed with exit code ${code}: ${Buffer.concat(stderr).toString("utf8")}`));
+          return;
+        }
+        const pdf = await fs.readFile(outputFile);
+        if (pdf.length === 0) {
+          reject(new Error("wkhtmltopdf returned an empty PDF output."));
+          return;
+        }
+        resolve(pdf);
+      } catch (error) {
+        reject(error);
+      } finally {
+        fs.unlink(outputFile).catch(() => {});
       }
-      if (pdf.length === 0) {
-        reject(new Error("wkhtmltopdf returned an empty PDF output."));
-        return;
-      }
-      resolve(pdf);
     });
 
     child.stdin.end(html);
