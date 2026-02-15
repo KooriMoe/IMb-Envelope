@@ -351,8 +351,10 @@ app.get("/trackimb-data", async (req, res) => {
   try {
     res.setHeader("Cache-Control", "no-store");
     const barcode = String(req.query.IMbNum || "").replace(/\D/g, "");
-    if (!/^\d{31}$/.test(barcode)) {
-      return res.status(400).json({ error: "Invalid request", error_description: "IMbNum must be a 31-digit numeric barcode" });
+    if (!/^\d{29}$|^\d{31}$/.test(barcode)) {
+      return res
+        .status(400)
+        .json({ error: "Invalid request", error_description: "IMbNum must be a 29-digit or 31-digit numeric barcode" });
     }
 
     const trackingData = await fetchTrackingByBarcode(barcode);
