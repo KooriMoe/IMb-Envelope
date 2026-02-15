@@ -5,15 +5,16 @@ services:
       - "8084:8080"
     depends_on:
       - redis
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
     environment:
       - TZ=America/Los_Angeles
+      - PORT=8080
+      - REDIS_HOST=redis
+    env_file:
+      - .env
     restart: always
 
   redis:
-    image: "redis:latest"
+    image: redis:latest
     environment:
       - TZ=America/Los_Angeles
     restart: always

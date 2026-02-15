@@ -1,36 +1,43 @@
-# IMb Envelope
+# IMb Envelope (Node.js)
 
-A Python-based web application for generating envelopes/labels with Intelligent Mail Barcodes (IMb) and tracking First-Class Mail.  
-
-Forked from [1977cui/envelope](https://github.com/1997cui/envelope).
+Node.js web application for generating USPS Intelligent Mail Barcode (IMb) envelopes/labels and tracking First-Class mail.
 
 ## Features
-- Generate a ready-to-print #10 envelope PDF with an IMb barcode.
-- "Return Service Requested" is enabled by default.
-- Track all First-Class Mail using the IMb number.
+- Generate ready-to-print #10 envelope (HTML/PDF) with IMb barcode.
+- Generate Avery 8163 label output (HTML/PDF).
+- Track mail by `receipt_zip + serial` or full IMb number.
+- Validate recipient addresses using USPS Address APIs.
+- Store USPS feed scan events in Redis and merge them into tracking output.
 
-## Installation
+## Configuration
+1. Copy `.env.example` to `.env`.
+2. Set your USPS and app credentials:
+- `MAILER_ID`
+- `BSG_USERNAME`
+- `BSG_PASSWD`
+- `USPS_NEWAPI_CUSTOMER_ID`
+- `USPS_NEWAPI_CUSTOMER_SECRET`
+- `USPS_WEBAPI_USERNAME` (optional fallback API)
+- `SESSION_SECRET`
+- `DEBUG_ONLY` (`true` to run without Redis using in-memory storage)
+- `DEBUG_SERIAL` (fixed serial value used when `DEBUG_ONLY=true`)
+- `WKHTMLTOPDF_PATH` (optional path to `wkhtmltopdf` binary; default: `wkhtmltopdf`)
 
-### 1. Register a USPS Business Customer Gateway (BCG) Account
-To use this tool, you need a USPS BCG account.
+## Local run
+```bash
+npm install
+npm start
+```
 
-1. Visit the [USPS Business Customer Gateway](https://gateway.usps.com/) and register an account.
-2. Create a **Mailer ID** in your account.
+App runs at [http://localhost:8080](http://localhost:8080).
 
-### 2. Configure the Application
-1. Rename or move `app/config.py.example` to `app/config.py`.
-2. Edit the following credentials in `config.py`:
-   - `MAILER_ID`
-   - `BSG_USERNAME`
-   - `BSG_PASSWD`
-   - `USPS_WEBAPI_USERNAME`
-3. If needed, modify the `SRV_TYPE` according to the [Service Type Identifier Table](https://postalpro.usps.com/service-type-identifiers/stidtable).
+## Docker run
+```bash
+docker compose up -d --build
+```
 
-### 3. Set Up with Docker
-1. Edit the `Dockerfile` and `docker-compose.yml` if necessary.
-2. Run the following command to start the application:
-  ```docker-compose up -d```
+App is exposed at [http://localhost:8084](http://localhost:8084).
 
-### 4. Access the Web Interface
-Once the service is running, open your browser and go to:
-``` http://localhost:8084/```.
+## Debug mode (no Redis dependency)
+Set `DEBUG_ONLY=true` to run with in-memory storage and a fixed serial number (`DEBUG_SERIAL`).
+This is useful for testing without Redis while still calling USPS APIs normally.

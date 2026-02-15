@@ -60,7 +60,7 @@ body {
                 {{human_readable_bar|safe}}
             </div>
             <div class="recipient-text">
-                {% for line in recipient_address.split('\n') %}
+                {% for line in recipient_lines %}
                     {{ line }}<br/>
                 {% endfor %}
             </div>

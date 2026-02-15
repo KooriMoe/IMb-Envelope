@@ -2,3 +2,6 @@
 __pycache__/
 config.py
 .DS_Store
+node_modules/
+.env
+npm-debug.log*

@@ -35,6 +35,8 @@ body {
     height: 1.5in;
     position: absolute;
     font-family: "Buckeye Serif 2",serif;
+    font-size: 12pt;
+    line-height: 1.35;
 }
 
 .recipient-address {
@@ -63,6 +65,8 @@ body {
 
 .recipient-text {
     font-family: "Buckeye Serif 2",serif;
+    font-size: 12pt;
+    line-height: 1.35;
 }
 
 </style>
@@ -70,7 +74,7 @@ body {
 	<div class="envelope">
 		<div class="sender-address">
 			<!-- Sender address block -->
-			{% for line in sender_address.split('\n') %}
+			{% for line in sender_lines %}
             {{ line }}<br/>
             {% endfor %}<br/>
             <b>RETURN SERVICE REQUESTED</b><br/>
@@ -84,7 +88,7 @@ body {
                 {{human_readable_bar|safe}}
             </div>
             <div class="recipient-text">
-			    {% for line in recipient_address.split('\n') %}
+			    {% for line in recipient_lines %}
                 {{ line }}<br/>
                 {% endfor %}
             </div>

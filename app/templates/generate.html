@@ -40,7 +40,7 @@
 <body class="mdui-theme-primary-indigo mdui-theme-accent-amber mdui-typo">
   <div class="mdui-appbar mdui-appbar-fixed">
     <div class="mdui-toolbar mdui-color-theme">
-      <a href="{{ url_for('index') }}" class="mdui-btn mdui-btn-icon" aria-label="Back">
+      <a href="/" class="mdui-btn mdui-btn-icon" aria-label="Back">
         <i class="mdui-icon material-icons">arrow_back</i>
       </a>
       <span class="mdui-typo-title">Tracking Information</span>
@@ -69,10 +69,10 @@
       </div>
       <div class="mdui-card-content">
         <div class="button-row">
-          <a class="mdui-btn mdui-ripple mdui-color-theme" href="{{ url_for('download', format_type='envelope', doc_type='html') }}">
+          <a class="mdui-btn mdui-ripple mdui-color-theme" href="/download/envelope/html">
             Download HTML
           </a>
-          <a class="mdui-btn mdui-ripple mdui-btn-outlined" href="{{ url_for('download', format_type='envelope', doc_type='pdf') }}">
+          <a class="mdui-btn mdui-ripple mdui-btn-outlined" href="/download/envelope/pdf">
             Download PDF
           </a>
         </div>
@@ -85,7 +85,7 @@
         <div class="mdui-card-primary-subtitle">Select row and column</div>
       </div>
       <div class="mdui-card-content grid-2">
-        <form action="{{ url_for('download', format_type='avery', doc_type='html') }}" method="get">
+        <form action="/download/avery/html" method="get">
           <div class="mdui-textfield">
             <label class="mdui-textfield-label" for="row-html">Row (1-5)</label>
             <input class="mdui-textfield-input" type="number" id="row-html" name="row" min="1" max="5" />
@@ -97,7 +97,7 @@
           <button type="submit" class="mdui-btn mdui-ripple mdui-color-theme">Download HTML</button>
         </form>
 
-        <form action="{{ url_for('download', format_type='avery', doc_type='pdf') }}" method="get">
+        <form action="/download/avery/pdf" method="get">
           <div class="mdui-textfield">
             <label class="mdui-textfield-label" for="row-pdf">Row (1-5)</label>
             <input class="mdui-textfield-input" type="number" id="row-pdf" name="row" min="1" max="5" />

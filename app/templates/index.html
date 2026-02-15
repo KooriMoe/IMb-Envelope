@@ -72,7 +72,7 @@
   <script>
     function validateAddress() {
       var xhr = new XMLHttpRequest();
-      xhr.open('POST', "{{ url_for('validate_address') }}");
+      xhr.open('POST', "/validate_address");
       xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
       var form_dom = document.getElementById("addressform");
       if (!form_dom.checkValidity()) {
@@ -153,7 +153,7 @@
         <div class="mdui-card-primary-subtitle">Create a printable PDF or HTML envelope</div>
       </div>
       <div class="mdui-card-content">
-        <form method="POST" action="{{ url_for('generate') }}" target="_blank" id="addressform">
+        <form method="POST" action="/generate" target="_blank" id="addressform">
           <div class="mdui-textfield">
             <label class="mdui-textfield-label" for="sender_address">Sender Address</label>
             <textarea class="mdui-textfield-input" name="sender_address" rows="4"></textarea>
@@ -252,12 +252,12 @@
       event.preventDefault();
       let receiptZip = document.getElementById("receiptZip").value;
       let serial = document.getElementById("serial").value;
-      window.location.href = `{{ url_for('tracking') }}?receipt_zip=${encodeURIComponent(receiptZip)}&serial=${encodeURIComponent(serial)}`;
+      window.location.href = `/tracking?receipt_zip=${encodeURIComponent(receiptZip)}&serial=${encodeURIComponent(serial)}`;
     }
     function submitIMbForm(event) {
       event.preventDefault();
       let IMbNum = document.getElementById("IMbNum").value;
-      window.location.href = `{{ url_for('trackingIMb') }}?IMbNum=${encodeURIComponent(IMbNum)}`;
+      window.location.href = `/trackingIMb?IMbNum=${encodeURIComponent(IMbNum)}`;
     }
   </script>
 </body>

@@ -25,6 +25,8 @@ body {
     width: 4in;
     height: 1.5in;
     position: absolute;
+    font-size: 12pt;
+    line-height: 1.35;
 }
 
 .recipient-address {
@@ -44,6 +46,7 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    line-height: 1.35;
 }
 
 .usps-barcode {
@@ -53,4 +56,9 @@ body {
 
 .barcode-humanreadable {
     font-size: 10pt;
+}
+
+.recipient-text {
+    font-size: 12pt;
+    line-height: 1.35;
 }

@@ -1,0 +1,23 @@
+{
+  "name": "imb-envelope",
+  "version": "1.0.0",
+  "description": "Node.js app for generating IMb envelopes and tracking USPS scans",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "NODE_ENV=development node src/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "axios": "^1.11.0",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "express-session": "^1.18.2",
+    "imb": "^1.0.3",
+    "ioredis": "^5.7.0",
+    "nunjucks": "^3.2.4",
+    "xml2js": "^0.6.2"
+  }
+}
