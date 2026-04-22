@@ -48,28 +48,29 @@ async def generate_usps_new_api_token(customer_id: str, customer_secret: str):
     return resp_json
 
 async def new_api_token_maintain():
-    access_token = await redis_client.get("usps_new_api_access_token")
     token_expiry_time = await redis_client.get("usps_new_api_access_token_expiry")
     now = time.time()
     if token_expiry_time is not None:
         token_expiry_time = float(token_expiry_time.decode('utf-8'))
-    if token_expiry_time is None or now >= token_expiry_time:
-        # Token is expired or absent; obtain a new token
-        app.logger.info("Trying to get USPS Oauth token from new API")
-        resp = await generate_usps_new_api_token(config.USPS_NEWAPI_CUSTOMER_ID, config.USPS_NEWAPI_CUSTOMER_SECRET)
-        if "error" in resp:
-            app.logger.error(f"Failed to get new token, {resp}")
-            return
-        access_token = resp.get('access_token')
-        if access_token is None:
-            return
-        token_type = resp.get('token_type', 'Bearer')
-        expires_in = int(resp.get('expires_in', -1))  
-        token_expiry_time = now + expires_in / 2.0
-        # Store the token and expiry time in Redis
-        await redis_client.set("usps_new_api_access_token", access_token)
-        await redis_client.set("usps_new_api_token_type", token_type)
-        await redis_client.set("usps_new_api_access_token_expiry", token_expiry_time)
+    if token_expiry_time is not None and now < token_expiry_time:
+        return
+    # Token is expired or absent; obtain a new token
+    app.logger.info("Trying to get USPS Oauth token from new API")
+    resp = await generate_usps_new_api_token(config.USPS_NEWAPI_CUSTOMER_ID, config.USPS_NEWAPI_CUSTOMER_SECRET)
+    if "error" in resp:
+        app.logger.error(f"Failed to get new token, {resp}")
+        return
+    access_token = resp.get('access_token')
+    if access_token is None:
+        return
+    token_type = resp.get('token_type', 'Bearer')
+    expires_in = int(resp.get('expires_in', -1))
+    new_expiry = now + expires_in / 2.0
+    pipe = redis_client.pipeline()
+    pipe.set("usps_new_api_access_token", access_token)
+    pipe.set("usps_new_api_token_type", token_type)
+    pipe.set("usps_new_api_access_token_expiry", new_expiry)
+    await pipe.execute()
 
 
 async def generate_iv_token_usps(username: str,
@@ -107,58 +108,72 @@ async def refresh_iv_token_usps(refresh_token: str):
 
 
 async def iv_token_maintain():
-    access_token = await redis_client.get("usps_access_token")
-    next_refresh_time = await redis_client.get("usps_token_nextrefresh")
-    refresh_token = await redis_client.get("usps_refresh_token")
+    next_refresh_raw, refresh_token = await asyncio.gather(
+        redis_client.get("usps_token_nextrefresh"),
+        redis_client.get("usps_refresh_token"),
+    )
     now = datetime.datetime.now()
-    if next_refresh_time is not None:
+    next_refresh_time = None
+    if next_refresh_raw is not None:
         next_refresh_time = datetime.datetime.fromtimestamp(
-            float(next_refresh_time.decode('utf-8')))
+            float(next_refresh_raw.decode('utf-8')))
     if next_refresh_time is None or now > next_refresh_time or refresh_token is None:
         resp = await generate_iv_token_usps(config.BSG_USERNAME, config.BSG_PASSWD)
         if "error" in resp:
             return
-        token_type = resp['token_type']
-        access_token = resp['access_token']
-        refresh_token = resp['refresh_token']
-        expires_in = int(resp['expires_in'])
-        refresh_token = resp['refresh_token']
-        await redis_client.set("usps_access_token", access_token)
-        await redis_client.set("usps_token_nextrefresh", time.time() + expires_in/2.0)
-        await redis_client.set("usps_refresh_token", refresh_token)
-        await redis_client.set("usps_token_type", token_type)
+        try:
+            token_type = resp['token_type']
+            access_token = resp['access_token']
+            refresh_token = resp['refresh_token']
+            expires_in = int(resp['expires_in'])
+        except (KeyError, ValueError, TypeError):
+            app.logger.error(f"Unexpected IV token response: {resp}")
+            return
+        pipe = redis_client.pipeline()
+        pipe.set("usps_access_token", access_token)
+        pipe.set("usps_token_nextrefresh", time.time() + expires_in/2.0)
+        pipe.set("usps_refresh_token", refresh_token)
+        pipe.set("usps_token_type", token_type)
+        await pipe.execute()
     else:
-        refresh_token = refresh_token.decode('utf-8')
-        resp = await refresh_iv_token_usps(refresh_token)
+        resp = await refresh_iv_token_usps(refresh_token.decode('utf-8'))
         if "error" in resp:
             return
-        token_type = resp['token_type']
-        access_token = resp['access_token']
-        expires_in = int(resp['expires_in'])
-        await redis_client.set("usps_access_token", access_token)
-        await redis_client.set("usps_token_type", token_type)
-        await redis_client.set("usps_token_nextrefresh", time.time() + expires_in/2.0)
+        try:
+            token_type = resp['token_type']
+            access_token = resp['access_token']
+            expires_in = int(resp['expires_in'])
+        except (KeyError, ValueError, TypeError):
+            app.logger.error(f"Unexpected IV refresh response: {resp}")
+            return
+        pipe = redis_client.pipeline()
+        pipe.set("usps_access_token", access_token)
+        pipe.set("usps_token_type", token_type)
+        pipe.set("usps_token_nextrefresh", time.time() + expires_in/2.0)
+        await pipe.execute()
 
 
 async def get_iv_authorization_header():
-    next_refresh_time = await redis_client.get("usps_token_nextrefresh")
-    if next_refresh_time is not None:
+    access_token, token_type, next_refresh_raw = await asyncio.gather(
+        redis_client.get("usps_access_token"),
+        redis_client.get("usps_token_type"),
+        redis_client.get("usps_token_nextrefresh"),
+    )
+    need_refresh = not access_token or not token_type
+    if not need_refresh and next_refresh_raw is not None:
         next_refresh_time = datetime.datetime.fromtimestamp(
-            float(next_refresh_time.decode('utf-8')))
-    now = datetime.datetime.now()
-    if next_refresh_time is None or now > next_refresh_time:
+            float(next_refresh_raw.decode('utf-8')))
+        if datetime.datetime.now() > next_refresh_time:
+            need_refresh = True
+    if need_refresh:
         await iv_token_maintain()
-    access_token = await redis_client.get("usps_access_token")
-    token_type = await redis_client.get("usps_token_type")
-    if not access_token or not token_type:
-        await iv_token_maintain()
-        access_token = await redis_client.get("usps_access_token")
-        token_type = await redis_client.get("usps_token_type")
+        access_token, token_type = await asyncio.gather(
+            redis_client.get("usps_access_token"),
+            redis_client.get("usps_token_type"),
+        )
     if not access_token or not token_type:
         raise AuthorizationTokenError("Unable to obtain USPS IV API access token")
-    headers_local = dict()
-    headers_local["Authorization"] = token_type.decode('utf-8') + " " + access_token.decode('utf-8')
-    return headers_local
+    return {"Authorization": f"{token_type.decode('utf-8')} {access_token.decode('utf-8')}"}
 
 async def get_new_api_authorization_header():
     try:
@@ -252,6 +267,10 @@ async def close_httpx_client():
     await httpx_client.aclose()
 
 
+async def close_redis_client():
+    await redis_client.close()
+
+
 async def get_USPS_standardized_address_new(address):
     params = {
         'firm': address.get("firmname", ''),
@@ -266,31 +285,28 @@ async def get_USPS_standardized_address_new(address):
     # Clean up empty parameters
     params = {k: v for k, v in params.items() if v}
 
+    url = urljoin(USPS_NEW_API_URL_BASE, '/addresses/v3/address')
     try:
         headers = await get_new_api_authorization_header()
         headers['accept'] = 'application/json'
-
-        response = await httpx_client.get(
-            urljoin(USPS_NEW_API_URL_BASE, '/addresses/v3/address'),
-            headers=headers,
-            params=params
-        )
-        response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        if exc.response.status_code == 401:
-            # Unauthorized; attempt to refresh the token and retry once
+        response = await httpx_client.get(url, headers=headers, params=params)
+        if response.status_code == 401:
+            # Token likely stale; refresh and retry once.
             app.logger.warning("Unauthorized response, refreshing access token and retrying")
             await new_api_token_maintain()
             headers = await get_new_api_authorization_header()
-            response = await httpx_client.get(
-                urljoin(USPS_NEW_API_URL_BASE, '/addresses/v3/address'),
-                headers=headers,
-                params=params
-            )
-            response.raise_for_status()
-        else:
-            app.logger.error(f"HTTP error occurred: {exc}")
-            return {"error": "HTTPError", "error_description": str(exc)}
+            headers['accept'] = 'application/json'
+            response = await httpx_client.get(url, headers=headers, params=params)
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        app.logger.error(f"HTTP error occurred: {exc}")
+        return {"error": "HTTPError", "error_description": str(exc)}
+    except httpx.HTTPError as exc:
+        app.logger.error(f"HTTP error occurred: {exc}")
+        return {"error": "HTTPError", "error_description": str(exc)}
+    except AuthorizationTokenError as exc:
+        app.logger.error(f"Authorization error: {exc}")
+        return {"error": "AuthorizationTokenError", "error_description": str(exc)}
     except Exception as exc:
         app.logger.exception("Exception occurred in get_USPS_standardized_address_new")
         return {"error": "Exception", "error_description": str(exc)}
